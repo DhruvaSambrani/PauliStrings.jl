@@ -24,7 +24,8 @@ export k_local_basis, z_basis, x_basis, y_basis, complete_basis
 export Circuits
 export pauli_weight, support, pauli_rotation
 export TrotterGate, trotterize, trotter_step!
-export evolve, EvolutionResult, AbstractEvolutionMethod, Trotter, RK4, DOPRI5, Exact
+export evolve, EvolutionResult, AbstractEvolutionMethod, Trotter, TrotterTS, RK4, DOPRI5, Exact
+export anticommutes
 
 using Random
 using LinearAlgebra
@@ -48,6 +49,7 @@ include("noise.jl")
 include("random.jl")
 include("runge_kutta.jl")
 include("trotter.jl")
+include("translation_symmetry_trotter.jl")
 include("evolution.jl")
 include("moments.jl")
 include("construction.jl")

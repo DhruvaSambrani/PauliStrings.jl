@@ -26,6 +26,18 @@ end
 Trotter(; order::Integer=2, gates=nothing) = Trotter(Int(order), gates)
 
 """
+    TrotterTS(; order=2)
+
+Fixed-step product-formula integrator. `order` is 1 (Lie) or 2 (Strang). 
+
+Implemented for `H::OperatorTS`/`O::OperatorTS`.
+"""
+struct TrotterTS <: AbstractEvolutionMethod
+    order::Int
+end
+TrotterTS(; order::Integer=2) = TrotterTS(Int(order))
+
+"""
     RK4()
 
 Classical fixed-step 4th-order Runge–Kutta. Takes one internal step per
@@ -70,6 +82,8 @@ struct EvolutionResult{T,H,O}
     history::H
     final::O
 end
+
+
 
 # ---------- internal helpers ----------
 
@@ -285,6 +299,31 @@ function _evolve(::Trotter, H::AbstractOperator, O::AbstractOperator, tspan;
                         "`OperatorTS` only, not for `$(typeof(H))`."))
 end
 
+function _evolve(method::TrotterTS, H::Operator{<:PauliStringTS}, O::Operator{<:PauliStringTS}, tspan;
+    truncation, dissipation, fout, hbar)
+
+    n = length(tspan)
+    history = _alloc_history(fout, O, n)
+    O = copy(O)
+    sublattices_cache = precompute_sublattices(H)
+    for i in ProgressBar(1:(n - 1))
+        dt = tspan[i + 1] - tspan[i]
+
+        O = tstrotter_step!(O, H, sublattices_cache, dt, hbar; 
+                            order=method.order, truncation=truncation)
+        O = dissipation(O, dt)
+        O = truncation(O)
+
+        _save!(history, fout, O, i + 1)
+    end
+
+    return EvolutionResult(collect(tspan), history, O)
+end
+
+function _evolve(::TrotterTS, H::AbstractOperator, O::AbstractOperator, tspan;
+    truncation, dissipation, fout, hbar)
+    throw(ArgumentError("TrotterTS evolution via `evolve` is implemented for `OperatorTS` only, not for `$(typeof(H))`."))
+end
 
 function _evolve(::Exact, H::AbstractOperator, O::AbstractOperator, tspan;
                  truncation, dissipation, fout, hbar)
